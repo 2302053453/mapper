@@ -122,22 +122,45 @@ jobs:
           x86_64-w64-mingw32-toolchain-1
 
 - job: Windows_mingw32_Release
+  variables:
+    IMAGE_NAME: 'windows-2019'
+    MINGW: mingw32
+    SUPERBUILD_INSTALL_DIR: 'C:/msys2'
   pool:
-    vmImage: 'windows-2019'
+    vmImage: $(IMAGE_NAME)
   steps:
+    - task: DownloadPipelineArtifact@0
+      inputs:
+        pipelineId: $(openorienteering.superbuild.pipelineId)
+        artifactName: superbuild-$(IMAGE_NAME)-$(MINGW)
+        targetPath: $(SUPERBUILD_INSTALL_DIR)
+      displayName: 'Download superbuild artifacts'
     - template: msys2-build.yml
       parameters:
-        imageName: 'windows-2019'
-        mingw: 'mingw32'
+        imageName: $(IMAGE_NAME)
+        mingw: $(MINGW)
         cmakeArgs: >
-          -G "MinGW Makefiles"
+          -G "MSYS Makefiles"
+          -DCMAKE_TOOLCHAIN_FILE=C:/msys2/$(MINGW)/toolchain/toolchain.cmake
           -DCMAKE_BUILD_TYPE=Release
+          -DGDAL_DATA_DIR=C:/msys2/$(MINGW)/superbuild/share/gdal
         makeArgs: -j 3
 
 - job: Windows_mingw64_RelWithDebInfo
   pool:
     vmImage: 'windows-2019'
   steps:
+    - task: DownloadPipelineArtifact@0
+      inputs:
+        pipelineId: $(msys2.pipelineId)
+        artifactName: 'msys2-mingw64'
+      displayName: 'Download MSYS2 artifact'
+    - task: ExtractFiles@1
+      inputs:
+        archiveFilePatterns: msys2.tgz
+        destinationFolder: C:\
+        cleanDestinationFolder: false
+      displayName: 'Extract MSYS2 artifact'
     - template: msys2-build.yml
       parameters:
         imageName: 'windows-2019'
@@ -145,4 +168,7 @@ jobs:
         cmakeArgs: >
           -G "Ninja"
           -DCMAKE_BUILD_TYPE=RelWithDebInfo
-
+          -DMapper_BUILD_CLIPPER=1
+          -DPROJ4_ROOT=C:/msys2/mingw64
+          -DGDAL_DATA_DIR=C:/msys2/mingw64/share/gdal
+          -DCMAKE_DISABLE_FIND_PACKAGE_Qt5Positioning:BOOL=TRUE

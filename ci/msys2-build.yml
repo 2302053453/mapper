@@ -35,22 +35,13 @@ parameters:
 
 
 steps:
-- task: DownloadPipelineArtifact@0
-  inputs:
-    pipelineId: $(msys2.pipelineId)
-    artifactName: 'msys2-${{ parameters.mingw }}'
-  displayName: 'Download MSYS2 artifact'
-
-- task: ExtractFiles@1
-  inputs:
-    archiveFilePatterns: msys2.tgz
-    destinationFolder: C:\
-    cleanDestinationFolder: false
-  displayName: 'Extract MSYS2 artifact'
-
 - script: |
     echo on
-    set PATH=C:\msys2\${{ parameters.mingw }}\bin;%WINDIR%\system32;%WINDIR%;%WINDIR%\system32\wbem
+    if exist "C:\msys2\${{ parameters.mingw }}\superbuild\bin" (
+      set PATH=C:\msys2\${{ parameters.mingw }}\superbuild\bin;C:\msys2\${{ parameters.mingw }}\bin;C:\msys2\usr\bin;%WINDIR%\system32;%WINDIR%;%WINDIR%\system32\wbem
+    ) else (
+      set PATH=C:\msys2\${{ parameters.mingw }}\bin;%WINDIR%\system32;%WINDIR%;%WINDIR%\system32\wbem
+    )
     
     @REM Keep this warning out of CI stderr
     C:\msys2\usr\bin\sed -i -e "/licensing_warning/s,WARNING,STATUS," doc\licensing\CMakeLists.txt
@@ -61,11 +52,7 @@ steps:
       $(Build.SourcesDirectory) ^
       -Wno-dev ^
       "-DMapper_VERSION_DISPLAY=$(Build.SourceBranch) $(Build.SourceVersion)" ^
-      "-DMapper_BUILD_CLIPPER=1" ^
       "-DLICENSING_PROVIDER=${{ parameters.licensingProvider }}" ^
-      "-DPROJ4_ROOT=C:/msys2/${{ parameters.mingw }}" ^
-      "-DGDAL_DATA_DIR=C:/msys2/${{ parameters.mingw }}/share/gdal" ^
-      "-DCMAKE_DISABLE_FIND_PACKAGE_Qt5Positioning:BOOL=TRUE" ^
       "-Dgp_grep_cmd=C:\msys2\usr\bin\grep" ^
       ${{ parameters.cmakeArgs }}
     if errorlevel 1 exit /b 1
